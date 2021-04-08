@@ -19,7 +19,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         # import pdb; pdb.set_trace()
         # customers = Customer.objects.filter(id=3)
-        customers = self.get_queryset()
+        customers = Customer.objects.all()
         serializer = CustomerSerializer(customers, many=True)
         return Response(serializer.data)
 
@@ -100,7 +100,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         serializer = CustomerSerializer(customers, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['POST']) #setting detail=True helps to implement the decorator function on only a specific id 
+    @action(detail=True, methods=['POST']) #setting detail=True helps to implement the decorator function on only a specific id 
     def change_status(self, request, **kwargs):
         status = True if request.data['active'] == 'True' else False
         customers = Customer.objects.all()
