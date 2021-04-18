@@ -1,6 +1,11 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import (AllowAny, IsAuthenticatedOrReadOnly, IsAdminUser, 
+DjangoModelPermissions, DjangoModelPermissionsOrAnonReadOnly)
+from django_filters.rest_framework import  DjangoFilterBackend
 from .models import Customer, Professions, DataSheet, Document
 from rest_framework import viewsets
 from .serializer import CustomerSerializer, ProfessionsSerializer, DataSheetSerializer, DocumentSerializer
@@ -10,18 +15,32 @@ from .serializer import CustomerSerializer, ProfessionsSerializer, DataSheetSeri
 class CustomerViewSet(viewsets.ModelViewSet):
     #queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
+    filterset_fields = ['name']
+    filter_backends = [SearchFilter, DjangoFilterBackend, OrderingFilter]
+    search_fields = ['name', 'address', 'data_sheet__description']
+    ordering_fields = ['id', 'name']
+    lookup_fields = 'name' #field(s) here should have unique input
+    authentication_classes = [TokenAuthentication,]
 
     #to override the method get_queryset
     def get_queryset(self):
-        active_customer = Customer.objects.filter(active=True)
-        return active_customer
+        address = self.request.query_params.get('address', None)
+        if self.request.query_params.get('active')== 'False':
+            status = False
+        else:
+            status = True
+        if address:
+            customers = Customer.objects.filter(address__icontains= address, active=status)
+        else:
+            customers = Customer.objects.filter(active=status)
+        return customers
 
-    def list(self, request, *args, **kwargs):
-        # import pdb; pdb.set_trace()
-        # customers = Customer.objects.filter(id=3)
-        customers = Customer.objects.all()
-        serializer = CustomerSerializer(customers, many=True)
-        return Response(serializer.data)
+    # def list(self, request, *args, **kwargs):
+    #     # import pdb; pdb.set_trace()
+    #     # customers = Customer.objects.filter(id=3)
+    #     customers = self.get_queryset()
+    #     serializer = CustomerSerializer(customers, many=True)
+    #     return Response(serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
         # import pdb; pdb.set_trace()
@@ -29,17 +48,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
         serializer = CustomerSerializer(obj)
         return Response(serializer.data)
 
-    def create(self, request, *args, **kwargs):
-        data = request.data
-        customer = Customer.objects.create(
-            name = data['name'], address = data['address'], data_sheet_id = data['data_sheet'],
-        )
-        professions = Professions.objects.get(id = data['profession'])
-        customer.profession.add(professions)
-        customer.save()
-        serializer = CustomerSerializer(customer)
+    # def create(self, request, *args, **kwargs):
+    #     data = request.data
+    #     customer = Customer.objects.create(
+    #         name = data['name'], address = data['address'], data_sheet_id = data['data_sheet'],
+    #     )
+    #     professions = Professions.objects.get(id = data['profession'])
+    #     customer.profession.add(professions)
+    #     customer.save()
+    #     serializer = CustomerSerializer(customer)
         
-        return Response(serializer.data)
+    #     return Response(serializer.data)
     
     def update(self, request, *args, **kwargs):
         data = request.data
@@ -86,7 +105,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False)
     def deactivate_all(self, request, **kwargs):
-        customers = Customer.objects.all()
+        customers = self.get_queryset()
         customers.update(active=False)
         # customer.save()
         serializer = CustomerSerializer(customers, many=True)
@@ -94,7 +113,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False)
     def activate_all(self, request, **kwargs):
-        customers = Customer.objects.all()
+        customers = self.get_queryset()
         customers.update(active=True)
         # customers.save()
         serializer = CustomerSerializer(customers, many=True)
@@ -103,7 +122,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['POST']) #setting detail=True helps to implement the decorator function on only a specific id 
     def change_status(self, request, **kwargs):
         status = True if request.data['active'] == 'True' else False
-        customers = Customer.objects.all()
+        customers = self.get_queryset()
         customers.update(active=status)
         serializer = CustomerSerializer(customers, many= True)
         return Response(serializer.data)
@@ -111,11 +130,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class ProfessionsViewSet(viewsets.ModelViewSet):
     queryset = Professions.objects.all()
     serializer_class = ProfessionsSerializer
+    authentication_classes = [TokenAuthentication,]
+    permission_classes = [IsAdminUser,]
 
 class DataSheetViewSet(viewsets.ModelViewSet):
     queryset = DataSheet.objects.all()
     serializer_class = DataSheetSerializer
+    permission_classes = [AllowAny, ]
 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
+    authentication_classes= [TokenAuthentication,]
+    # permission_classes = [IsAuthenticatedOrReadOnly,]
+    permission_classes = [DjangoModelPermissionsOrAnonReadOnly,]

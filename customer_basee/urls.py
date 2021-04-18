@@ -16,6 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
+from rest_framework.authtoken.views import obtain_auth_token
 from pivots.views import CustomerViewSet, ProfessionsViewSet, DataSheetViewSet, DocumentViewSet
 
 # router = routers.DefaultRouter()  
@@ -33,6 +34,30 @@ router.register(r'documents', DocumentViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api-token-auth/', obtain_auth_token),
     path('api-auth/', include('rest_framework.urls')),
     path('api/', include(router.urls))
 ]
+
+# {
+#     "name": "Cain",
+#     "address": "20, Eleyele",
+#     "profession": [
+#         {
+#             "description": "Affiliate marketer"
+#         }
+#     ],
+#     "data_sheet": {
+#         "id": 9,
+#         "description": "Cain historical data sheet",
+#         "historical_data": "datasheet"
+#     },
+#     "active": true,
+#     "document_set": [
+#         {
+#         "dtype": "PP",
+#         "doc_number": "CD-9877",
+#         "documents": "Cain"
+#         }
+#     ]
+# }
